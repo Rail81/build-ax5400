@@ -27,13 +27,8 @@ jobs:
 
     - name: Clone source code
       run: |
-        # Используем стабильную ветку
         git clone -b openwrt-24.10 https://github.com/immortalwrt/immortalwrt openwrt
         cd openwrt
-        
-        # Подключаем репозиторий Подкопа
-        echo "src-git podkop https://github.com/podkop-routing/openwrt-podkop.git" >> feeds.conf.default
-        
         ./scripts/feeds update -a
         ./scripts/feeds install -a
 
@@ -45,19 +40,16 @@ jobs:
         CONFIG_TARGET_qualcommax_ipq50xx=y
         CONFIG_TARGET_qualcommax_ipq50xx_DEVICE_xiaomi_redmi-ax5400=y
 
-        # Модули ядра для Podkop / sing-box
-        CONFIG_PACKAGE_sing-box=y
+        # Железобетонно вшиваем в ядро все критические зависимости
         CONFIG_PACKAGE_kmod-nft-tproxy=y
         CONFIG_PACKAGE_kmod-inet-diag=y
         CONFIG_PACKAGE_kmod-tun=y
+        CONFIG_PACKAGE_sing-box=y
         CONFIG_PACKAGE_curl=y
         CONFIG_PACKAGE_bind-dig=y
         CONFIG_PACKAGE_coreutils-base64=y
-
-        # Сам Podkop и русификация
-        CONFIG_PACKAGE_podkop=y
-        CONFIG_PACKAGE_luci-app-podkop=y
-        CONFIG_PACKAGE_luci-i18n-podkop-ru=y
+        CONFIG_PACKAGE_ca-bundle=y
+        CONFIG_PACKAGE_ca-certificates=y
         EOF
         make defconfig
 
@@ -70,8 +62,7 @@ jobs:
     - name: Compile the firmware
       run: |
         cd openwrt
-        # Запуск сборки в 2 потока для стабильности
-        make -j2 IGNORE_ERRORS=1 || make -j1 V=s IGNORE_ERRORS=1
+        make -j$(nproc) || make -j1 V=s
 
     - name: Prepare Artifacts
       run: |
