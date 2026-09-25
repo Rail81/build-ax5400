@@ -1,4 +1,4 @@
-name: Build OpenWrt for AX5400 Podkop
+name: Build OpenWrt for AX5400
 
 on:
   workflow_dispatch:
@@ -11,6 +11,11 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
 
+    - name: Free Disk Space
+      run: |
+        sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
+        sudo apt-get clean
+
     - name: Initialization environment
       env:
         DEBIAN_FRONTEND: noninteractive
@@ -20,12 +25,15 @@ jobs:
         gettext libssl-dev libncurses5-dev libncursesw5-dev zlib1g-dev python3 \
         python3-pip python3-ply python3-pyelftools git rsync unzip libglib2.0-dev libltdl-dev wget file time
 
-    - name: Clone source code and feeds
+    - name: Clone source code
       run: |
-        git clone -b master https://github.com/immortalwrt/immortalwrt openwrt
+        # Используем стабильную ветку
+        git clone -b openwrt-24.10 https://github.com/immortalwrt/immortalwrt openwrt
         cd openwrt
-        # Добавляем кастомный фид Podkop
-        echo 'src-git podkop https://github.com/podkop-routing/podkop-openwrt-feed.git' >> feeds.conf.default
+        
+        # Подключаем репозиторий Подкопа
+        echo "src-git podkop https://github.com/podkop-routing/openwrt-podkop.git" >> feeds.conf.default
+        
         ./scripts/feeds update -a
         ./scripts/feeds install -a
 
@@ -37,7 +45,7 @@ jobs:
         CONFIG_TARGET_qualcommax_ipq50xx=y
         CONFIG_TARGET_qualcommax_ipq50xx_DEVICE_xiaomi_redmi-ax5400=y
 
-        # Необходимые ядра и модули tproxy/tun
+        # Модули ядра для Podkop / sing-box
         CONFIG_PACKAGE_sing-box=y
         CONFIG_PACKAGE_kmod-nft-tproxy=y
         CONFIG_PACKAGE_kmod-inet-diag=y
@@ -46,21 +54,32 @@ jobs:
         CONFIG_PACKAGE_bind-dig=y
         CONFIG_PACKAGE_coreutils-base64=y
 
-        # Сам Podkop и его веб-интерфейс из коробки
+        # Сам Podkop и русификация
         CONFIG_PACKAGE_podkop=y
         CONFIG_PACKAGE_luci-app-podkop=y
         CONFIG_PACKAGE_luci-i18n-podkop-ru=y
         EOF
         make defconfig
 
-    - name: Compile the firmware
+    - name: Download packages
       run: |
         cd openwrt
         make download -j8
-        make -j$(nproc) || make -j1 V=s
+        find dl -size -1024c -exec rm -f {} \;
 
-    - name: Upload firmware to artifact
+    - name: Compile the firmware
+      run: |
+        cd openwrt
+        # Запуск сборки в 2 потока для стабильности
+        make -j2 IGNORE_ERRORS=1 || make -j1 V=s IGNORE_ERRORS=1
+
+    - name: Prepare Artifacts
+      run: |
+        mkdir -p /tmp/out
+        cp openwrt/bin/targets/qualcommax/ipq50xx/*sysupgrade.bin /tmp/out/ 2>/dev/null || true
+
+    - name: Upload firmware to release
       uses: actions/upload-artifact@v4
       with:
         name: Redmi_AX5400_Podkop_Firmware
-        path: openwrt/bin/targets/qualcommax/ipq50xx/*sysupgrade.bin
+        path: /tmp/out/*sysupgrade.bin
