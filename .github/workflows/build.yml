@@ -37,10 +37,9 @@ jobs:
         cd openwrt
         echo "CONFIG_TARGET_qualcommax=y" > .config
         echo "CONFIG_TARGET_qualcommax_ipq50xx=y" >> .config
-        echo "CONFIG_TARGET_DEVICE_qualcommax_ipq50xx_DEVICE_xiaomi_redmi-ax5400=y" >> .config
-        echo "CONFIG_TARGET_DEVICE_PACKAGES_qualcommax_ipq50xx_DEVICE_xiaomi_redmi-ax5400=y" >> .config
+        echo "CONFIG_TARGET_qualcommax_ipq50xx_DEVICE_xiaomi_redmi-ax5400=y" >> .config
         
-        # Обязательные модули ядра и зависимости для Подкопа
+        # Модули ядра и зависимости для работы Подкопа
         echo "CONFIG_PACKAGE_kmod-nft-tproxy=y" >> .config
         echo "CONFIG_PACKAGE_kmod-inet-diag=y" >> .config
         echo "CONFIG_PACKAGE_kmod-tun=y" >> .config
@@ -67,8 +66,7 @@ jobs:
     - name: Prepare Artifacts
       run: |
         mkdir -p /tmp/out
-        # Ищем ВСЕ bin файлы во всей папке bin и копируем в /tmp/out
-        find openwrt/bin/ -type f -name "*.bin" -exec cp {} /tmp/out/ \;
+        find openwrt/bin/ -type f -name "*sysupgrade.bin" -exec cp {} /tmp/out/ \;
         ls -la /tmp/out/
 
     - name: Upload firmware to release
