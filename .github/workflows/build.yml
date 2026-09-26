@@ -27,7 +27,8 @@ jobs:
 
     - name: Clone source code
       run: |
-        git clone -b openwrt-24.10 https://github.com/immortalwrt/immortalwrt openwrt
+        # Используем официальную ветку OpenWrt 24.10 (в ней ipq50xx разложен четко по профилям)
+        git clone -b openwrt-24.10 https://github.com/openwrt/openwrt.git openwrt
         cd openwrt
         ./scripts/feeds update -a
         ./scripts/feeds install -a
@@ -35,21 +36,23 @@ jobs:
     - name: Generate configuration
       run: |
         cd openwrt
-        echo "CONFIG_TARGET_qualcommax=y" > .config
-        echo "CONFIG_TARGET_qualcommax_ipq50xx=y" >> .config
-        echo "CONFIG_TARGET_qualcommax_ipq50xx_DEVICE_xiaomi_redmi-ax5400=y" >> .config
+        # Жесткая принудительная запись целевого чипа и конкретной модели
+        cat << 'EOF' > .config
+        CONFIG_TARGET_qualcommax=y
+        CONFIG_TARGET_qualcommax_ipq50xx=y
+        CONFIG_TARGET_qualcommax_ipq50xx_DEVICE_xiaomi_redmi-ax5400=y
+        CONFIG_PACKAGE_kmod-nft-tproxy=y
+        CONFIG_PACKAGE_kmod-inet-diag=y
+        CONFIG_PACKAGE_kmod-tun=y
+        CONFIG_PACKAGE_sing-box=y
+        CONFIG_PACKAGE_curl=y
+        CONFIG_PACKAGE_bind-dig=y
+        CONFIG_PACKAGE_coreutils-base64=y
+        CONFIG_PACKAGE_ca-bundle=y
+        CONFIG_PACKAGE_ca-certificates=y
+        EOF
         
-        # Модули ядра и зависимости для работы Подкопа
-        echo "CONFIG_PACKAGE_kmod-nft-tproxy=y" >> .config
-        echo "CONFIG_PACKAGE_kmod-inet-diag=y" >> .config
-        echo "CONFIG_PACKAGE_kmod-tun=y" >> .config
-        echo "CONFIG_PACKAGE_sing-box=y" >> .config
-        echo "CONFIG_PACKAGE_curl=y" >> .config
-        echo "CONFIG_PACKAGE_bind-dig=y" >> .config
-        echo "CONFIG_PACKAGE_coreutils-base64=y" >> .config
-        echo "CONFIG_PACKAGE_ca-bundle=y" >> .config
-        echo "CONFIG_PACKAGE_ca-certificates=y" >> .config
-        
+        # Принудительно расширяем конфиг БЕЗ сброса на дефолтный ipq807x
         make defconfig
 
     - name: Download packages
@@ -66,7 +69,8 @@ jobs:
     - name: Prepare Artifacts
       run: |
         mkdir -p /tmp/out
-        find openwrt/bin/ -type f -name "*sysupgrade.bin" -exec cp {} /tmp/out/ \;
+        # Ищем файл, в названии которого есть ax5400
+        find openwrt/bin/ -type f -name "*ax5400*sysupgrade.bin" -exec cp {} /tmp/out/ \;
         ls -la /tmp/out/
 
     - name: Upload firmware to release
