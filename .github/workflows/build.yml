@@ -35,22 +35,22 @@ jobs:
     - name: Generate configuration
       run: |
         cd openwrt
-        cat << 'EOF' > .config
-        CONFIG_TARGET_qualcommax=y
-        CONFIG_TARGET_qualcommax_ipq50xx=y
-        CONFIG_TARGET_qualcommax_ipq50xx_DEVICE_xiaomi_redmi-ax5400=y
-
-        # Железобетонно вшиваем в ядро все критические зависимости
-        CONFIG_PACKAGE_kmod-nft-tproxy=y
-        CONFIG_PACKAGE_kmod-inet-diag=y
-        CONFIG_PACKAGE_kmod-tun=y
-        CONFIG_PACKAGE_sing-box=y
-        CONFIG_PACKAGE_curl=y
-        CONFIG_PACKAGE_bind-dig=y
-        CONFIG_PACKAGE_coreutils-base64=y
-        CONFIG_PACKAGE_ca-bundle=y
-        CONFIG_PACKAGE_ca-certificates=y
-        EOF
+        echo "CONFIG_TARGET_qualcommax=y" > .config
+        echo "CONFIG_TARGET_qualcommax_ipq50xx=y" >> .config
+        echo "CONFIG_TARGET_DEVICE_qualcommax_ipq50xx_DEVICE_xiaomi_redmi-ax5400=y" >> .config
+        echo "CONFIG_TARGET_DEVICE_PACKAGES_qualcommax_ipq50xx_DEVICE_xiaomi_redmi-ax5400=y" >> .config
+        
+        # Обязательные модули ядра и зависимости для Подкопа
+        echo "CONFIG_PACKAGE_kmod-nft-tproxy=y" >> .config
+        echo "CONFIG_PACKAGE_kmod-inet-diag=y" >> .config
+        echo "CONFIG_PACKAGE_kmod-tun=y" >> .config
+        echo "CONFIG_PACKAGE_sing-box=y" >> .config
+        echo "CONFIG_PACKAGE_curl=y" >> .config
+        echo "CONFIG_PACKAGE_bind-dig=y" >> .config
+        echo "CONFIG_PACKAGE_coreutils-base64=y" >> .config
+        echo "CONFIG_PACKAGE_ca-bundle=y" >> .config
+        echo "CONFIG_PACKAGE_ca-certificates=y" >> .config
+        
         make defconfig
 
     - name: Download packages
@@ -67,10 +67,12 @@ jobs:
     - name: Prepare Artifacts
       run: |
         mkdir -p /tmp/out
-        cp openwrt/bin/targets/qualcommax/ipq50xx/*sysupgrade.bin /tmp/out/ 2>/dev/null || true
+        # Ищем ВСЕ bin файлы во всей папке bin и копируем в /tmp/out
+        find openwrt/bin/ -type f -name "*.bin" -exec cp {} /tmp/out/ \;
+        ls -la /tmp/out/
 
     - name: Upload firmware to release
       uses: actions/upload-artifact@v4
       with:
         name: Redmi_AX5400_Podkop_Firmware
-        path: /tmp/out/*sysupgrade.bin
+        path: /tmp/out/
