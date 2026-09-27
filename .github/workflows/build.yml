@@ -27,7 +27,6 @@ jobs:
 
     - name: Clone source code
       run: |
-        # Используем официальную ветку OpenWrt 24.10 (в ней ipq50xx разложен четко по профилям)
         git clone -b openwrt-24.10 https://github.com/openwrt/openwrt.git openwrt
         cd openwrt
         ./scripts/feeds update -a
@@ -36,7 +35,6 @@ jobs:
     - name: Generate configuration
       run: |
         cd openwrt
-        # Жесткая принудительная запись целевого чипа и конкретной модели
         cat << 'EOF' > .config
         CONFIG_TARGET_qualcommax=y
         CONFIG_TARGET_qualcommax_ipq50xx=y
@@ -51,8 +49,6 @@ jobs:
         CONFIG_PACKAGE_ca-bundle=y
         CONFIG_PACKAGE_ca-certificates=y
         EOF
-        
-        # Принудительно расширяем конфиг БЕЗ сброса на дефолтный ipq807x
         make defconfig
 
     - name: Download packages
@@ -69,9 +65,11 @@ jobs:
     - name: Prepare Artifacts
       run: |
         mkdir -p /tmp/out
-        # Ищем файл, в названии которого есть ax5400
-        find openwrt/bin/ -type f -name "*ax5400*sysupgrade.bin" -exec cp {} /tmp/out/ \;
-        ls -la /tmp/out/
+        # Копируем ВСЕ скомпилированные .bin файлы без исключений
+        find openwrt/bin/targets/ -type f -name "*.bin" -exec cp {} /tmp/out/ \;
+        # Показываем список скопированных файлов прямо в логе GitHub Actions
+        echo "=== СОБРАННЫЕ ФАЙЛЫ ==="
+        ls -lh /tmp/out/
 
     - name: Upload firmware to release
       uses: actions/upload-artifact@v4
