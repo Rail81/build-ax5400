@@ -27,7 +27,8 @@ jobs:
 
     - name: Clone source code
       run: |
-        git clone -b openwrt-24.10 https://github.com/openwrt/openwrt.git openwrt
+        # Используем репозиторий с добавленной поддержкой IPQ50XX / Redmi AX5400
+        git clone -b main https://github.com/VIKINGTOG/OpenWrt-IPQ50XX.git openwrt
         cd openwrt
         ./scripts/feeds update -a
         ./scripts/feeds install -a
@@ -38,7 +39,7 @@ jobs:
         cat << 'EOF' > .config
         CONFIG_TARGET_qualcommax=y
         CONFIG_TARGET_qualcommax_ipq50xx=y
-        CONFIG_TARGET_qualcommax_ipq50xx_DEVICE_xiaomi_redmi-ax5400=y
+        CONFIG_TARGET_qualcommax_ipq50xx_DEVICE_redmi_ax5400=y
         CONFIG_PACKAGE_kmod-nft-tproxy=y
         CONFIG_PACKAGE_kmod-inet-diag=y
         CONFIG_PACKAGE_kmod-tun=y
@@ -65,9 +66,7 @@ jobs:
     - name: Prepare Artifacts
       run: |
         mkdir -p /tmp/out
-        # Копируем ВСЕ скомпилированные .bin файлы без исключений
         find openwrt/bin/targets/ -type f -name "*.bin" -exec cp {} /tmp/out/ \;
-        # Показываем список скопированных файлов прямо в логе GitHub Actions
         echo "=== СОБРАННЫЕ ФАЙЛЫ ==="
         ls -lh /tmp/out/
 
