@@ -27,7 +27,7 @@ jobs:
 
     - name: Clone source code
       run: |
-        git clone -b master https://github.com/immortalwrt/immortalwrt openwrt
+        git clone -b openwrt-24.10 https://github.com/immortalwrt/immortalwrt.git openwrt
         cd openwrt
         ./scripts/feeds update -a
         ./scripts/feeds install -a
@@ -35,29 +35,25 @@ jobs:
     - name: Generate configuration
       run: |
         cd openwrt
-        
-        # Задаем жесткий таргет и устройство через утилиту конфигурирования
-        ./scripts/config --set-str CONFIG_TARGET_BOARD "qualcommax"
-        ./scripts/config --set-str CONFIG_TARGET_SUBTARGET "ipq50xx"
-        ./scripts/config --set-str CONFIG_TARGET_PROFILE "xiaomi_redmi-ax5400"
-        
-        # Точные флаги поддержки устройства
-        ./scripts/config --enable CONFIG_TARGET_qualcommax
-        ./scripts/config --enable CONFIG_TARGET_qualcommax_ipq50xx
-        ./scripts/config --enable CONFIG_TARGET_qualcommax_ipq50xx_DEVICE_xiaomi_redmi-ax5400
-        
-        # Вшиваем модули ядра и утилиты для Podkop
-        ./scripts/config --enable CONFIG_PACKAGE_kmod-nft-tproxy
-        ./scripts/config --enable CONFIG_PACKAGE_kmod-inet-diag
-        ./scripts/config --enable CONFIG_PACKAGE_kmod-tun
-        ./scripts/config --enable CONFIG_PACKAGE_sing-box
-        ./scripts/config --enable CONFIG_PACKAGE_curl
-        ./scripts/config --enable CONFIG_PACKAGE_bind-dig
-        ./scripts/config --enable CONFIG_PACKAGE_coreutils-base64
-        ./scripts/config --enable CONFIG_PACKAGE_ca-bundle
-        ./scripts/config --enable CONFIG_PACKAGE_ca-certificates
-        
-        # Расширяем конфигурацию с учетом всех зависимостей
+        cat << 'EOF' > .config
+        CONFIG_TARGET_qualcommax=y
+        CONFIG_TARGET_qualcommax_ipq50xx=y
+        CONFIG_TARGET_qualcommax_ipq50xx_DEVICE_xiaomi_redmi-ax5400=y
+        CONFIG_TARGET_MULTI_PROFILE=n
+        CONFIG_TARGET_ALL_PROFILES=n
+
+        # Необходимые ядрёные модули и бинарники для Podkop / sing-box
+        CONFIG_PACKAGE_kmod-nft-tproxy=y
+        CONFIG_PACKAGE_kmod-inet-diag=y
+        CONFIG_PACKAGE_kmod-tun=y
+        CONFIG_PACKAGE_sing-box=y
+        CONFIG_PACKAGE_curl=y
+        CONFIG_PACKAGE_bind-dig=y
+        CONFIG_PACKAGE_coreutils-base64=y
+        CONFIG_PACKAGE_ca-bundle=y
+        CONFIG_PACKAGE_ca-certificates=y
+        EOF
+
         make defconfig
 
     - name: Download packages
@@ -74,10 +70,9 @@ jobs:
     - name: Prepare Artifacts
       run: |
         mkdir -p /tmp/out
-        # Копируем скомпилированные bin файлы
-        find openwrt/bin/targets/ -type f -name "*.bin" -exec cp {} /tmp/out/ \;
-        echo "=== СОБРАННЫЕ ФАЙЛЫ ==="
-        ls -lh /tmp/out/
+        find openwrt/bin/targets/qualcommax/ipq50xx/ -type f -name "*.bin" -exec cp {} /tmp/out/ \; 2>/dev/null || find openwrt/bin/targets/ -type f -name "*.bin" -exec cp {} /tmp/out/ \;
+        echo "=== СКОПИРОВАННЫЕ ФАЙЛЫ ==="
+        ls -la /tmp/out/
 
     - name: Upload firmware to release
       uses: actions/upload-artifact@v4
